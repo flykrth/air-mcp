@@ -14,11 +14,29 @@ class SupplierIntelligenceAgent(BaseAgent):
 
         parts_needed = state.get("parts_needed", {})
         if not parts_needed:
-            self.log(logs, "No replacement parts required. Skipping supplier evaluation.")
-            return {"supplier_evaluated": False}
+            # Proactive evaluation for parallel execution
+            cooling_loop = state.get("cooling_loop", {})
+            if cooling_loop and not cooling_loop.get("healthy", True):
+                self.log(logs, "Parallel Execution: Proactively detected cooling loop degradation. Evaluating suppliers for replacement 'chiller_fan_v2'.")
+                part_name = "chiller_fan_v2"
+                quantity = 1
+            else:
+                self.log(logs, "No replacement parts required and cooling loop is healthy. Skipping supplier evaluation.")
+                return {"supplier_evaluated": False}
+        else:
+            part_name = list(parts_needed.keys())[0]
+            quantity = parts_needed[part_name]
 
-        part_name = list(parts_needed.keys())[0] # chiller_fan_v2
-        quantity = parts_needed[part_name]
+        # Fetch supplier selection prompt template
+        try:
+            if hasattr(mcp_client, "get_prompt"):
+                mcp_client.get_prompt("supplier_selection", {
+                    "part_name": part_name,
+                    "required_quantity": str(quantity)
+                })
+        except Exception as pe:
+            self.log(logs, f"WARNING: Failed to fetch prompt template: {pe}")
+
 
         # Call evaluate_suppliers tool
         search_response = mcp_client.call_tool("evaluate_suppliers", {

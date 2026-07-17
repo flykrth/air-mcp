@@ -40,6 +40,18 @@ class MaintenancePlanningAgent(BaseAgent):
         ticket_id = ticket["id"]
         self.log(logs, f"TICKET CREATED: Ticket ID: {ticket_id}. Status: {ticket['status']}. Required skills: {required_skills}.")
 
+        # Fetch maintenance planning prompt template
+        try:
+            if hasattr(mcp_client, "get_prompt"):
+                mcp_client.get_prompt("maintenance_planning", {
+                    "ticket_id": str(ticket_id),
+                    "issue_description": description,
+                    "affected_assets": rack_name
+                })
+        except Exception as pe:
+            self.log(logs, f"WARNING: Failed to fetch prompt template: {pe}")
+
+
         # Read technician registry resource
         technicians = []
         try:

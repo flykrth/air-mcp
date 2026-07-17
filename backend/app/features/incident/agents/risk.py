@@ -21,7 +21,20 @@ class InfrastructureRiskAgent(BaseAgent):
         at_risk_workloads = risk_response.get("at_risk_workloads", [])
         total_exposure = risk_response.get("total_financial_exposure_usd", 0.0)
 
+        # Fetch emergency cooling response prompt template for SLA mitigation
+        if at_risk_workloads:
+            try:
+                if hasattr(mcp_client, "get_prompt"):
+                    mcp_client.get_prompt("emergency_cooling_response", {
+                        "cooling_efficiency": str(state.get("cooling_loop", {}).get("efficiency", 1.0)),
+                        "ambient_temp": str(state.get("cooling_loop", {}).get("ambient_temp", 24.0)),
+                        "impacted_racks": ",".join([str(h.get("rack_id", "")) for h in state.get("hotspots", [])])
+                    })
+            except Exception as pe:
+                self.log(logs, f"WARNING: Failed to fetch prompt template: {pe}")
+
         for wrk in at_risk_workloads:
+
             # Map breach_probability to failure_probability for logging compatibility
             failure_prob = wrk.get("breach_probability", 0.0)
             self.log(

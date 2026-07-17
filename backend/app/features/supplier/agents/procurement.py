@@ -49,6 +49,30 @@ class ProcurementAgent(BaseAgent):
             f"Est. Delivery: {order['estimated_delivery']}."
         )
 
+        # Fetch prompt templates for explainability
+        try:
+            if hasattr(mcp_client, "get_prompt"):
+                mcp_client.get_prompt("procurement_recommendation", {
+                    "ticket_id": str(ticket_id),
+                    "selected_supplier_name": selected_supplier.get("supplier_name", ""),
+                    "total_cost_usd": str(order.get("total_cost", 0.0))
+                })
+                tech_name = "Unknown"
+                if state.get("selected_technician"):
+                    tech_name = state["selected_technician"].get("name", "Unknown")
+                mcp_client.get_prompt("technician_dispatch", {
+                    "technician_name": tech_name,
+                    "ticket_id": str(ticket_id),
+                    "parts_list": item_name
+                })
+                mcp_client.get_prompt("incident_recovery", {
+                    "ticket_id": str(ticket_id),
+                    "stabilization_duration_minutes": "15"
+                })
+        except Exception as pe:
+            self.log(logs, f"WARNING: Failed to fetch prompt templates: {pe}")
+
+
         # Simulate repair completion
         self.log(logs, f"REPAIR SIMULATION: Dispatching technician to install replacement '{item_name}'.")
         repair_response = mcp_client.call_tool("confirm_maintenance_repair", {

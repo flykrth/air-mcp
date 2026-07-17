@@ -31,6 +31,18 @@ class InfrastructureHealthAgent(BaseAgent):
                 }
                 hotspots.append(rack_info)
                 self.log(logs, f"HOTSPOT DETECTED: {metric['name']} is at {temp}°C (threshold: 35.0°C). Status: {metric['status']}.")
+                
+                # Fetch prompt template for explainability
+                try:
+                    if hasattr(mcp_client, "get_prompt"):
+                        mcp_client.get_prompt("thermal_hotspot_investigation", {
+                            "rack_id": metric.get("rack_id", ""),
+                            "temperature_celsius": str(temp),
+                            "cooling_flow_rate": "1.35"
+                        })
+                except Exception as pe:
+                    self.log(logs, f"WARNING: Failed to fetch prompt template: {pe}")
+
 
         # Read datacenter://assets/registry resource to check cooling chiller health
         cooling_healthy = True

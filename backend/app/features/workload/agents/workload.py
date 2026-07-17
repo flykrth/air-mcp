@@ -22,6 +22,18 @@ class CloudWorkloadAgent(BaseAgent):
             rack_id = rack["rack_id"]
             self.log(logs, f"MIGRATION PLANNING: Querying recommendations for source rack {rack['name']}.")
             
+            # Fetch workload migration strategy prompt template
+            try:
+                if hasattr(mcp_client, "get_prompt"):
+                    at_risk_ids = [str(w.get("workload_id", "")) for w in state.get("at_risk_workloads", []) if w.get("current_rack") == rack["name"]]
+                    mcp_client.get_prompt("workload_migration_strategy", {
+                        "workload_ids": ",".join(at_risk_ids) if at_risk_ids else "None",
+                        "source_rack_id": rack_id
+                    })
+            except Exception as pe:
+                self.log(logs, f"WARNING: Failed to fetch prompt template: {pe}")
+
+            
             recommend_response = mcp_client.call_tool("recommend_workload_migration", {"source_rack_id": rack_id})
             if recommend_response.get("status") != "success":
                 self.log(logs, f"ERROR: Failed to retrieve migration recommendations for {rack['name']}.")
