@@ -1,0 +1,17 @@
+node_modules/
+dist/
+out/
+.env
+.env.local
+.DS_Store
+*.log
+.gemini/
+.agents/
+.cursor/
+.codex/
+.antigravity/
+.copilot/
+.claude/
+.opencode/
+__pycache__/
+*.pyc
