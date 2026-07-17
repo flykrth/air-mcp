@@ -814,4 +814,152 @@ export class DatacenterTools {
       delivery_timestamp: deliveryTimestamp
     };
   }
+
+  @Tool({
+    name: 'trigger_simulation_event',
+    description: 'Trigger a simulation event (HEATWAVE, COOLING_DEGRADATION, RESET) to update datacenter state.',
+    inputSchema: z.object({
+      event_type: z.enum(['HEATWAVE', 'COOLING_DEGRADATION', 'RESET']).describe('The event type to trigger')
+    })
+  })
+  async triggerSimulationEvent(input: { event_type: 'HEATWAVE' | 'COOLING_DEGRADATION' | 'RESET' }, ctx: ExecutionContext) {
+    ctx.logger.info('Executing tool: trigger_simulation_event', input);
+    if (input.event_type === 'HEATWAVE') {
+      this.state.heatwaveActive = true;
+      this.state.ambientTemp = 38.0;
+    } else if (input.event_type === 'COOLING_DEGRADATION') {
+      this.state.coolingSystemHealthy = false;
+      this.state.coolingSystemEfficiency = 0.3; // 30% efficiency
+      // Spike rack temperatures on Rows A (0) and B (1) immediately to trigger hotspots
+      for (const rack of this.state.racks) {
+        if (rack.row_id !== 2) {
+          rack.status = 'CRITICAL';
+          const logs = this.state.telemetryLogs.filter(l => l.rack_id === rack.id);
+          const latest = logs[logs.length - 1];
+          if (latest) {
+            latest.temperature_celsius = 38.5;
+            latest.cooling_flow_rate_lps = 1.35;
+          }
+        }
+      }
+    } else if (input.event_type === 'RESET') {
+      this.state.reset();
+    }
+    const summary = `Triggered simulation event: ${input.event_type}`;
+    this.state.logDecision('trigger_simulation_event', input, summary, 'Injected simulated hazard event into digital twin telemetry feed.');
+    return {
+      status: 'success',
+      message: `Simulation event ${input.event_type} triggered successfully.`
+    };
+  }
+
+  @Tool({
+    name: 'migrate_workload',
+    description: 'Migrate a cloud workload to a target rack.',
+    inputSchema: z.object({
+      workload_id: z.string().describe('The UUID of the workload to migrate'),
+      target_rack_id: z.string().describe('The target rack UUID')
+    })
+  })
+  async migrateWorkload(input: { workload_id: string; target_rack_id: string }, ctx: ExecutionContext) {
+    ctx.logger.info('Executing tool: migrate_workload', input);
+    const workload = this.state.workloads.find(w => w.id === input.workload_id);
+    if (!workload) {
+      throw new Error(`Workload with ID ${input.workload_id} not found.`);
+    }
+    const targetRack = this.state.racks.find(r => r.id === input.target_rack_id);
+    if (!targetRack) {
+      throw new Error(`Target rack with ID ${input.target_rack_id} not found.`);
+    }
+
+    const oldRackId = workload.rack_id;
+    workload.rack_id = input.target_rack_id;
+    workload.status = 'RUNNING'; // make sure it's running on the new rack
+
+    const summary = `Migrated workload ${workload.name} from rack ${oldRackId} to rack ${targetRack.name}.`;
+    this.state.logDecision('migrate_workload', input, summary, 'Executed container scheduler hot-migration to restore cooling margins.');
+
+    return {
+      status: 'success',
+      message: `Workload ${workload.name} successfully migrated to ${targetRack.name}.`,
+      workload
+    };
+  }
+
+  @Tool({
+    name: 'confirm_maintenance_repair',
+    description: 'Confirm that maintenance is complete, resolve the ticket, and restore cooling loops.',
+    inputSchema: z.object({
+      ticket_id: z.string().describe('The UUID of the maintenance ticket')
+    })
+  })
+  async confirmMaintenanceRepair(input: { ticket_id: string }, ctx: ExecutionContext) {
+    ctx.logger.info('Executing tool: confirm_maintenance_repair', input);
+    const ticket = this.state.tickets.find(t => t.id === input.ticket_id);
+    if (!ticket) {
+      throw new Error(`Maintenance ticket with ID ${input.ticket_id} not found.`);
+    }
+
+    ticket.status = 'RESOLVED';
+    ticket.resolved_at = new Date().toISOString();
+
+    // Release technician
+    if (ticket.technician_id) {
+      const tech = this.state.technicians.find(t => t.id === ticket.technician_id);
+      if (tech) {
+        tech.status = 'AVAILABLE';
+        tech.current_ticket_id = null;
+      }
+    }
+
+    // Resolve the incident
+    const incident = this.state.incidents.find(i => i.rack_id === ticket.target_rack_id && !i.resolved);
+    if (incident) {
+      incident.resolved = true;
+      incident.resolved_at = new Date().toISOString();
+    }
+
+    // Restore cooling systems
+    this.state.coolingSystemHealthy = true;
+    this.state.coolingSystemEfficiency = 1.0;
+    this.state.ambientTemp = 24.0; // reset ambient temperature
+
+    const summary = `Resolved maintenance ticket ${ticket.id} and restored cooling loop health.`;
+    this.state.logDecision('confirm_maintenance_repair', input, summary, 'Recorded physical technician repair signature and re-pressurized CRAC loop.');
+
+    return {
+      status: 'success',
+      message: `Maintenance ticket ${ticket.id} resolved and cooling loops restored.`,
+      ticket
+    };
+  }
+
+  @Tool({
+    name: 'validate_thermal_recovery',
+    description: 'Tick the system state and validate if rack temperatures have returned to optimal parameters.',
+    inputSchema: z.object({})
+  })
+  async validateThermalRecovery(input: {}, ctx: ExecutionContext) {
+    ctx.logger.info('Executing tool: validate_thermal_recovery');
+    
+    // Tick the state multiple times to allow temperature calculation to run and cool down below thresholds after cooling is restored
+    this.state.tick();
+    this.state.tick();
+    this.state.tick();
+
+    const criticalRacks = this.state.racks.filter(r => r.status !== 'OPTIMAL');
+    const recovered = criticalRacks.length === 0;
+
+    const summary = `Validated thermal recovery: ${recovered ? 'RECOVERED' : 'IN_PROGRESS'}. Critical racks remaining: ${criticalRacks.length}.`;
+    this.state.logDecision('validate_thermal_recovery', input, summary, 'Checked digital twin thermal matrix for post-repair stabilization.');
+
+    return {
+      status: 'success',
+      recovered,
+      message: recovered 
+        ? 'Thermal recovery verified. All server rack temperatures are within optimal thresholds.'
+        : `Thermal recovery in progress. ${criticalRacks.length} rack(s) still cooling down.`,
+      critical_racks: criticalRacks.map(r => ({ name: r.name, status: r.status }))
+    };
+  }
 }

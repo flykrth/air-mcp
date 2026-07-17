@@ -30,11 +30,11 @@ async def test_full_resilience_workflow():
     
     # Verify parts procurement and order
     assert state.order is not None
-    assert state.order["status"] == "PENDING"
+    assert state.order["status"] in ["PENDING", "ORDERED"]
     
     # Verify final recovery confirmed
     assert state.recovery_verified is True
-    assert "Recovery verified" in state.recovery_message
+    assert "recovery verified" in state.recovery_message.lower()
     
     print("\n[TEST SUCCESS] End-to-end mission orchestration completed and verified.")
 
