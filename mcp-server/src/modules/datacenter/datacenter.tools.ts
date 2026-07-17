@@ -36,7 +36,7 @@ export class DatacenterTools {
   })
   async analyzeInfrastructureHealth(input: { rack_id?: string; all?: boolean }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: analyze_infrastructure_health', input);
-    this.state.tick();
+    await this.state.sync();
 
     let targetRacks = this.state.racks;
     if (input.rack_id) {
@@ -135,7 +135,7 @@ export class DatacenterTools {
   })
   async predictFailure(input: { rack_id: string; forecast_hours?: number }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: predict_failure', input);
-    this.state.tick();
+    await this.state.sync();
 
     const rack = this.state.racks.find(r => r.id === input.rack_id);
     if (!rack) {
@@ -218,7 +218,7 @@ export class DatacenterTools {
   })
   async assessOperationalRisk(input: { rack_id?: string }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: assess_operational_risk', input);
-    this.state.tick();
+    await this.state.sync();
 
     const risks = [];
     let totalRiskCost = 0;
@@ -288,41 +288,56 @@ export class DatacenterTools {
   })
   async planMaintenance(input: { target_rack_id: string; issue_type: 'COOLING_LEAK' | 'FAN_FAILURE' | 'POWER_UNIT_FAULT' | 'GPU_OVERHEAT' | 'VALVE_BLOCKAGE'; description: string }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: plan_maintenance', input);
+    await this.state.sync();
 
     const rack = this.state.racks.find(r => r.id === input.target_rack_id);
     if (!rack) {
       throw new Error(`Rack with ID ${input.target_rack_id} not found.`);
     }
 
-    // Determine parts and skills based on issue type
-    let partsRequired: Record<string, number> = {};
     let requiredSkills: string[] = [];
+    switch (input.issue_type) {
+      case 'COOLING_LEAK': requiredSkills = ['Cooling Loops', 'Piping']; break;
+      case 'FAN_FAILURE': requiredSkills = ['CRAC Repair']; break;
+      case 'POWER_UNIT_FAULT': requiredSkills = ['Power Distribution', 'CRAC Repair']; break;
+      case 'GPU_OVERHEAT': requiredSkills = ['GPU Replacement', 'Physical Maintenance']; break;
+      case 'VALVE_BLOCKAGE': requiredSkills = ['Cooling Loops', 'CRAC Repair']; break;
+    }
+
+    const backendTicket = await this.state.planMaintenanceBackend(input.target_rack_id, input.issue_type, input.description);
+    if (backendTicket) {
+      const summary = `Created maintenance ticket ${backendTicket.id} for ${rack.name} (${input.issue_type}).`;
+      this.state.logDecision('plan_maintenance', input, summary, 'Planned corrective maintenance based on diagnostic logs.');
+      return {
+        status: 'success',
+        ticket: backendTicket,
+        required_skills: requiredSkills
+      };
+    }
+
+    // Determine parts and skills based on issue type (Fallback)
+    let partsRequired: Record<string, number> = {};
     let estimatedDurationHours = 2.0;
 
     switch (input.issue_type) {
       case 'COOLING_LEAK':
         partsRequired = { 'coolant_valve_3in': 1 };
-        requiredSkills = ['Cooling Loops', 'Piping'];
         estimatedDurationHours = 3.0;
         break;
       case 'FAN_FAILURE':
         partsRequired = { 'chiller_fan_v2': 2 };
-        requiredSkills = ['CRAC Repair'];
         estimatedDurationHours = 1.5;
         break;
       case 'POWER_UNIT_FAULT':
         partsRequired = { 'crac_compressor_p4': 1 };
-        requiredSkills = ['Power Distribution', 'CRAC Repair'];
         estimatedDurationHours = 4.0;
         break;
       case 'GPU_OVERHEAT':
         partsRequired = { 'gpu_fan_block': 2 };
-        requiredSkills = ['GPU Replacement', 'Physical Maintenance'];
         estimatedDurationHours = 2.0;
         break;
       case 'VALVE_BLOCKAGE':
         partsRequired = { 'coolant_valve_3in': 1, 'ambient_sensor_hxt': 1 };
-        requiredSkills = ['Cooling Loops', 'CRAC Repair'];
         estimatedDurationHours = 2.5;
         break;
     }
@@ -378,6 +393,7 @@ export class DatacenterTools {
   })
   async scheduleTechnician(input: { ticket_id: string; technician_id: string; scheduled_time: string }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: schedule_technician', input);
+    await this.state.sync();
 
     const ticket = this.state.tickets.find(t => t.id === input.ticket_id);
     if (!ticket) {
@@ -389,11 +405,27 @@ export class DatacenterTools {
       throw new Error(`Technician with ID ${input.technician_id} not found.`);
     }
 
+    const backendSuccess = await this.state.scheduleTechnicianBackend(input.ticket_id, input.technician_id, input.scheduled_time);
+    if (backendSuccess) {
+      const summary = `Assigned technician ${tech.name} to ticket ${ticket.id} scheduled at ${input.scheduled_time}.`;
+      this.state.logDecision('schedule_technician', input, summary, 'Matched technician skills to work order requirements.');
+      return {
+        status: 'success',
+        message: `Technician ${tech.name} has been assigned and scheduled.`,
+        ticket,
+        technician: {
+          id: tech.id,
+          name: tech.name,
+          status: 'ON_DUTY'
+        }
+      };
+    }
+
     if (tech.status !== 'AVAILABLE') {
       throw new Error(`Technician ${tech.name} is currently not available (status: ${tech.status}).`);
     }
 
-    // Allocate tech
+    // Allocate tech (Fallback)
     tech.status = 'ON_DUTY';
     tech.current_ticket_id = ticket.id;
 
@@ -426,6 +458,7 @@ export class DatacenterTools {
   })
   async estimateMaintenanceCost(input: { ticket_id: string }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: estimate_maintenance_cost', input);
+    await this.state.sync();
 
     const ticket = this.state.tickets.find(t => t.id === input.ticket_id);
     if (!ticket) {
@@ -477,6 +510,7 @@ export class DatacenterTools {
   })
   async recommendWorkloadMigration(input: { source_rack_id: string }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: recommend_workload_migration', input);
+    await this.state.sync();
 
     const sourceRack = this.state.racks.find(r => r.id === input.source_rack_id);
     if (!sourceRack) {
@@ -559,7 +593,7 @@ export class DatacenterTools {
   })
   async estimateCapacity(input: { target_rack_id?: string; vcpus_required: number; memory_gb_required: number; power_kw_required: number }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: estimate_capacity', input);
-    this.state.tick();
+    await this.state.sync();
 
     const results = [];
     const checkRacks = input.target_rack_id 
@@ -614,6 +648,7 @@ export class DatacenterTools {
   })
   async checkInventory(input: { part_names?: string[] }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: check_inventory', input);
+    await this.state.sync();
 
     let parts = Object.values(this.state.warehouseInventory);
     if (input.part_names && input.part_names.length > 0) {
@@ -647,6 +682,7 @@ export class DatacenterTools {
   })
   async evaluateSuppliers(input: { part_name: string; quantity: number }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: evaluate_suppliers', input);
+    await this.state.sync();
 
     const results = [];
     for (const supplier of this.state.suppliers) {
@@ -700,6 +736,7 @@ export class DatacenterTools {
   })
   async generateProcurementPlan(input: { ticket_id: string; supplier_id: string; parts: Record<string, number> }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: generate_procurement_plan', input);
+    await this.state.sync();
 
     const supplier = this.state.suppliers.find(s => s.id === input.supplier_id);
     if (!supplier) {
@@ -711,6 +748,17 @@ export class DatacenterTools {
       throw new Error(`Ticket with ID ${input.ticket_id} not found.`);
     }
 
+    const backendOrder = await this.state.generateProcurementPlanBackend(input.ticket_id, input.supplier_id, input.parts);
+    if (backendOrder) {
+      const summary = `Generated procurement order ${backendOrder.id} from ${backendOrder.supplier_name} for ticket ${input.ticket_id}. Total: $${backendOrder.total_cost} USD.`;
+      this.state.logDecision('generate_procurement_plan', input, summary, 'Generated emergency procurement release for HVAC parts.');
+      return {
+        status: 'success',
+        procurement_order: backendOrder
+      };
+    }
+
+    // Fallback local code
     const orderId = randomUUID();
     const orderedItems = [];
     let grandTotal = 0;
@@ -788,6 +836,7 @@ export class DatacenterTools {
   })
   async notifyStakeholders(input: { incident_id: string; severity: 'INFO' | 'WARNING' | 'CRITICAL'; channel: 'EMAIL' | 'SLACK' | 'PAGERDUTY'; message: string }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: notify_stakeholders', input);
+    await this.state.sync();
 
     const notificationId = randomUUID();
     const deliveryTimestamp = new Date().toISOString();
@@ -824,6 +873,16 @@ export class DatacenterTools {
   })
   async triggerSimulationEvent(input: { event_type: 'HEATWAVE' | 'COOLING_DEGRADATION' | 'RESET' }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: trigger_simulation_event', input);
+    const backendSuccess = await this.state.triggerSimulationEventBackend(input.event_type);
+    if (backendSuccess) {
+      const summary = `Triggered simulation event: ${input.event_type}`;
+      this.state.logDecision('trigger_simulation_event', input, summary, 'Injected simulated hazard event into digital twin telemetry feed.');
+      return {
+        status: 'success',
+        message: `Simulation event ${input.event_type} triggered successfully.`
+      };
+    }
+
     if (input.event_type === 'HEATWAVE') {
       this.state.heatwaveActive = true;
       this.state.ambientTemp = 38.0;
@@ -863,6 +922,8 @@ export class DatacenterTools {
   })
   async migrateWorkload(input: { workload_id: string; target_rack_id: string }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: migrate_workload', input);
+    await this.state.sync();
+
     const workload = this.state.workloads.find(w => w.id === input.workload_id);
     if (!workload) {
       throw new Error(`Workload with ID ${input.workload_id} not found.`);
@@ -870,6 +931,17 @@ export class DatacenterTools {
     const targetRack = this.state.racks.find(r => r.id === input.target_rack_id);
     if (!targetRack) {
       throw new Error(`Target rack with ID ${input.target_rack_id} not found.`);
+    }
+
+    const backendSuccess = await this.state.migrateWorkloadBackend(input.workload_id, input.target_rack_id);
+    if (backendSuccess) {
+      const summary = `Migrated workload ${workload.name} from rack ${workload.rack_id} to rack ${targetRack.name}.`;
+      this.state.logDecision('migrate_workload', input, summary, 'Executed container scheduler hot-migration to restore cooling margins.');
+      return {
+        status: 'success',
+        message: `Workload ${workload.name} successfully migrated to ${targetRack.name}.`,
+        workload
+      };
     }
 
     const oldRackId = workload.rack_id;
@@ -895,9 +967,22 @@ export class DatacenterTools {
   })
   async confirmMaintenanceRepair(input: { ticket_id: string }, ctx: ExecutionContext) {
     ctx.logger.info('Executing tool: confirm_maintenance_repair', input);
+    await this.state.sync();
+
     const ticket = this.state.tickets.find(t => t.id === input.ticket_id);
     if (!ticket) {
       throw new Error(`Maintenance ticket with ID ${input.ticket_id} not found.`);
+    }
+
+    const backendSuccess = await this.state.confirmMaintenanceRepairBackend(input.ticket_id);
+    if (backendSuccess) {
+      const summary = `Resolved maintenance ticket ${ticket.id} and restored cooling loop health.`;
+      this.state.logDecision('confirm_maintenance_repair', input, summary, 'Recorded physical technician repair signature and re-pressurized CRAC loop.');
+      return {
+        status: 'success',
+        message: `Maintenance ticket ${ticket.id} resolved and cooling loops restored.`,
+        ticket
+      };
     }
 
     ticket.status = 'RESOLVED';
@@ -943,9 +1028,15 @@ export class DatacenterTools {
     ctx.logger.info('Executing tool: validate_thermal_recovery');
     
     // Tick the state multiple times to allow temperature calculation to run and cool down below thresholds after cooling is restored
-    this.state.tick();
-    this.state.tick();
-    this.state.tick();
+    const backendTicked = await this.state.tickBackend();
+    if (backendTicked) {
+      await this.state.tickBackend();
+      await this.state.tickBackend();
+    } else {
+      this.state.tick();
+      this.state.tick();
+      this.state.tick();
+    }
 
     const criticalRacks = this.state.racks.filter(r => r.status !== 'OPTIMAL');
     const recovered = criticalRacks.length === 0;

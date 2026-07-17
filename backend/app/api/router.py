@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import orchestrator, racks, workloads, telemetry, tickets, orders
+from app.api.v1 import orchestrator, racks, workloads, telemetry, tickets, orders, simulator
 
 api_router = APIRouter()
 
@@ -10,3 +10,5 @@ api_router.include_router(workloads.router, prefix="/workloads", tags=["workload
 api_router.include_router(telemetry.router, prefix="/telemetry", tags=["telemetry"])
 api_router.include_router(tickets.router, prefix="/tickets", tags=["tickets"])
 api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
+api_router.include_router(simulator.router, prefix="/simulator", tags=["simulator"])
+

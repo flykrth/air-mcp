@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.router import api_router
 from app.core.database import initialize_database
+from app.features.simulator.engine import SimulatorEngine
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -12,6 +13,15 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     await initialize_database()
+    # Initialize and start digital twin simulator background loop
+    engine = SimulatorEngine()
+    engine.start_background_loop()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    engine = SimulatorEngine()
+    engine.stop_background_loop()
+
 
 # Set CORS origins
 app.add_middleware(

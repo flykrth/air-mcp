@@ -178,7 +178,251 @@ export class DatacenterState {
     });
   }
 
+  async sync() {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/state');
+      if (response.ok) {
+        const data = (await response.json()) as any;
+        
+        this.ambientTemp = data.ambient_temp;
+        this.coolingSystemHealthy = data.cooling_system_healthy;
+        this.coolingSystemEfficiency = data.cooling_system_efficiency;
+        this.heatwaveActive = data.heatwave_active;
+
+        this.racks = data.racks.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          row_id: r.row_id,
+          column_id: r.column_id,
+          max_kw_capacity: r.max_kw_capacity,
+          cpu_capacity_cores: r.cpu_capacity_cores,
+          memory_capacity_gb: r.memory_capacity_gb,
+          status: r.status,
+          created_at: r.created_at || new Date().toISOString()
+        }));
+
+        this.workloads = data.workloads.map((w: any) => ({
+          id: w.id,
+          rack_id: w.rack_id,
+          name: w.name,
+          vcpus: w.vcpus,
+          memory_gb: w.memory_gb,
+          power_kw: w.power_kw,
+          priority: w.priority,
+          sla_threshold_temp: w.sla_threshold_temp,
+          status: w.status,
+          created_at: w.created_at
+        }));
+
+        this.technicians = data.technicians.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          skillset: t.skillset,
+          status: t.status,
+          current_ticket_id: t.current_ticket_id
+        }));
+
+        this.suppliers = data.suppliers.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          rating: s.rating,
+          inventory: s.inventory
+        }));
+
+        this.orders = data.orders.map((o: any) => ({
+          id: o.id,
+          ticket_id: o.ticket_id,
+          supplier_id: o.supplier_id,
+          items: o.items.map((item: any) => ({
+            part_name: item.part_name,
+            quantity: item.quantity,
+            unit_price_usd: item.unit_price_usd,
+            total_price_usd: item.total_price_usd
+          })),
+          total_cost: o.total_cost,
+          status: o.status,
+          estimated_delivery: o.estimated_delivery
+        }));
+
+        this.tickets = data.tickets.map((t: any) => ({
+          id: t.id,
+          target_rack_id: t.target_rack_id,
+          issue_type: t.issue_type,
+          description: t.description,
+          technician_id: t.technician_id,
+          status: t.status,
+          parts_required: t.parts_required,
+          scheduled_time: t.scheduled_time,
+          resolved_at: t.resolved_at,
+          estimated_duration_hours: t.estimated_duration_hours,
+          labor_hours: t.labor_hours,
+          calculated_cost: t.calculated_cost
+        }));
+
+        this.incidents = data.incidents.map((i: any) => ({
+          id: i.id,
+          rack_id: i.rack_id,
+          description: i.description,
+          severity: i.severity,
+          resolved: i.resolved,
+          created_at: i.created_at,
+          resolved_at: i.resolved_at
+        }));
+
+        this.telemetryLogs = data.telemetry_logs.map((log: any) => ({
+          id: log.id,
+          rack_id: log.rack_id,
+          temperature_celsius: log.temperature_celsius,
+          power_draw_kw: log.power_draw_kw,
+          cooling_flow_rate_lps: log.cooling_flow_rate_lps,
+          ambient_temperature: log.ambient_temperature,
+          cpu_utilization_percent: log.cpu_utilization_percent,
+          memory_utilization_percent: log.memory_utilization_percent,
+          recorded_at: log.recorded_at
+        }));
+
+        for (const key of Object.keys(data.inventory)) {
+          const inv = data.inventory[key];
+          this.warehouseInventory[key] = {
+            part_name: inv.part_name,
+            stock: inv.stock,
+            reorder_threshold: inv.reorder_threshold,
+            unit_cost: inv.unit_cost
+          };
+        }
+        return true;
+      }
+    } catch (err) {
+      // console.warn("[MCP STATE] Simulator backend offline. Running in standalone mode.");
+    }
+    return false;
+  }
+
+  async resetBackend() {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/reset', { method: 'POST' });
+      if (response.ok) {
+        await this.sync();
+        return true;
+      }
+    } catch (err) {}
+    this.resetLocal();
+    return false;
+  }
+
+  async tickBackend() {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/tick', { method: 'POST' });
+      if (response.ok) {
+        await this.sync();
+        return true;
+      }
+    } catch (err) {}
+    this.tickLocal();
+    return false;
+  }
+
+  async migrateWorkloadBackend(workloadId: string, targetRackId: string) {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workload_id: workloadId, target_rack_id: targetRackId })
+      });
+      if (response.ok) {
+        await this.sync();
+        return true;
+      }
+    } catch (err) {}
+    return false;
+  }
+
+  async planMaintenanceBackend(targetRackId: string, issueType: string, description: string) {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/maintenance/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_rack_id: targetRackId, issue_type: issueType, description })
+      });
+      if (response.ok) {
+        const data = (await response.json()) as any;
+        await this.sync();
+        return data.ticket;
+      }
+    } catch (err) {}
+    return null;
+  }
+
+  async scheduleTechnicianBackend(ticketId: string, technicianId: string, scheduledTime: string) {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/maintenance/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticketId, technician_id: technicianId, scheduled_time: scheduledTime })
+      });
+      if (response.ok) {
+        await this.sync();
+        return true;
+      }
+    } catch (err) {}
+    return false;
+  }
+
+  async confirmMaintenanceRepairBackend(ticketId: string) {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/maintenance/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticketId })
+      });
+      if (response.ok) {
+        await this.sync();
+        return true;
+      }
+    } catch (err) {}
+    return false;
+  }
+
+  async generateProcurementPlanBackend(ticketId: string, supplierId: string, parts: Record<string, number>) {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/procure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticketId, supplier_id: supplierId, parts })
+      });
+      if (response.ok) {
+        const data = (await response.json()) as any;
+        await this.sync();
+        return data.procurement_order;
+      }
+    } catch (err) {}
+    return null;
+  }
+
+  async triggerSimulationEventBackend(eventType: string) {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/simulator/incident', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_type: eventType })
+      });
+      if (response.ok) {
+        await this.sync();
+        return true;
+      }
+    } catch (err) {}
+    return false;
+  }
+
   reset() {
+    this.resetLocal();
+  }
+
+  tick() {
+    this.tickLocal();
+  }
+
+  resetLocal() {
     this.racks = [];
     this.telemetryLogs = [];
     this.workloads = [];
@@ -198,7 +442,7 @@ export class DatacenterState {
     this.heatwaveActive = false;
     this.telemetryLogCounter = 1;
 
-    // Initialize 6 Racks (3x2 Grid)
+    // Initialize Racks
     const rackNames = ['Rack-A1', 'Rack-A2', 'Rack-B1', 'Rack-B2', 'Rack-C1', 'Rack-C2'];
     let idx = 0;
     for (let row = 0; row < 3; row++) {
@@ -244,49 +488,12 @@ export class DatacenterState {
       {
         id: 'sop-cooling-failure',
         title: 'Emergency Chiller/Cooling Loop Failure Response SOP',
-        content: `# SOP: Emergency Chiller/Cooling Loop Failure Response
-
-## 1. Diagnostics & Verification
-- Check \`Telemetry Feed\` to confirm drop in cooling flow rates (\`cooling_flow_rate_lps\` < 2.0 L/s).
-- Verify chiller efficiency rating and chiller valve pressure.
-
-## 2. Mitigation Strategy
-- Identify all racks with temperature trending above 30.0°C.
-- Calculate SLA financial exposure and failure risks.
-- Migrate high-priority workloads (Priority 4 and 5) first to stable zones (Row C, column 1 & 2).
-
-## 3. Maintenance and Technician Dispatch
-- File an emergency corrective maintenance work order detailing needed parts.
-- Allocate certified technicians matching the required skillset (e.g. "CRAC Repair").
-- Check warehouse inventory. If parts are missing, submit procurement order.
-`
+        content: `# SOP: Emergency Chiller/Cooling Loop Failure Response\n\n## 1. Diagnostics & Verification\n- Check Telemetry Feed...\n`
       },
       {
         id: 'sop-thermal-hotspot',
         title: 'Localized Thermal Hotspot Investigation SOP',
-        content: `# SOP: Localized Thermal Hotspot Investigation
-
-## 1. Hotspot Identification
-- A localized thermal hotspot is defined as any server rack temperature exceeding 35.0°C while surrounding racks remain stable.
-- Check fans and air exhaust blockage telemetry.
-
-## 2. Load Management
-- Migrate low-priority workloads away from the affected rack to reduce power draw.
-- Cap power draw if temperature exceeds 40.0°C.
-
-## 3. Physical Dispatch
-- Schedule a technician to inspect rack fan array and airflow baffles.
-`
-      },
-      {
-        id: 'sop-power-instability',
-        title: 'Power Distribution Unit (PDU) & Power Grid Instability SOP',
-        content: `# SOP: Power Grid and PDU Instability
-
-## 1. Emergency Assessment
-- Evaluate grid frequency fluctuations.
-- Run load balancing to balance power draw across grid phases.
-`
+        content: `# SOP: Localized Thermal Hotspot Investigation\n\n## 1. Hotspot Identification...\n`
       }
     ];
 
@@ -303,11 +510,10 @@ export class DatacenterState {
       }
     ];
 
-    // Initialize Workloads on Racks
+    // Initialize Workloads
     const nowStr = new Date().toISOString();
     for (let i = 0; i < this.racks.length; i++) {
       const rack = this.racks[i];
-      // 2 workloads per rack
       this.workloads.push({
         id: randomUUID(),
         rack_id: rack.id,
@@ -315,7 +521,7 @@ export class DatacenterState {
         vcpus: 8,
         memory_gb: 32,
         power_kw: 1.5,
-        priority: i % 2 === 0 ? 4 : 2, // High priority on some
+        priority: i % 2 === 0 ? 4 : 2,
         sla_threshold_temp: 35.0,
         status: 'RUNNING',
         created_at: nowStr
@@ -334,11 +540,10 @@ export class DatacenterState {
       });
     }
 
-    // Initialize Telemetry with varied power loads (realistic thermal dynamics)
+    // Initialize Telemetry
     for (const rack of this.racks) {
-      // Calculate active workload power draw
       const activeWorkloads = this.workloads.filter(w => w.rack_id === rack.id && w.status === 'RUNNING');
-      const powerLoad = activeWorkloads.reduce((acc, w) => acc + w.power_kw, 2.0); // 2.0kW base rack overhead
+      const powerLoad = activeWorkloads.reduce((acc, w) => acc + w.power_kw, 2.0);
       const totalCpuUsed = activeWorkloads.reduce((acc, w) => acc + w.vcpus, 0);
       const totalMemUsed = activeWorkloads.reduce((acc, w) => acc + w.memory_gb, 0);
 
@@ -386,11 +591,9 @@ export class DatacenterState {
     ];
   }
 
-  // Update telemetry based on simulation state
-  tick() {
+  tickLocal() {
     const nowStr = new Date().toISOString();
     
-    // Determine heatwave effect
     if (this.heatwaveActive) {
       this.ambientTemp = Math.min(42.0, this.ambientTemp + 0.5);
     } else {
@@ -398,33 +601,26 @@ export class DatacenterState {
     }
 
     for (const rack of this.racks) {
-      // Find latest telemetry
       const logs = this.telemetryLogs.filter(l => l.rack_id === rack.id);
       const latest = logs[logs.length - 1];
 
-      // Base cooling flow
       let coolingFlow = 4.5;
       if (!this.coolingSystemHealthy && rack.row_id !== 2) {
-        // Zone 1 (Row A & B) is degraded. Zone 2 (Row C) has backup CRAC active
         coolingFlow = Math.max(0.5, coolingFlow * this.coolingSystemEfficiency);
       }
 
-      // Calculate power draw and utilization dynamically based on workloads
       const activeWorkloads = this.workloads.filter(w => w.rack_id === rack.id && w.status === 'RUNNING');
       const powerLoad = activeWorkloads.reduce((acc, w) => acc + w.power_kw, 2.0);
       const totalCpuUsed = activeWorkloads.reduce((acc, w) => acc + w.vcpus, 0);
       const totalMemUsed = activeWorkloads.reduce((acc, w) => acc + w.memory_gb, 0);
 
-      // Calculate new temperature based on heat production and cooling effectiveness
       const powerHeat = powerLoad * 1.5;
       const ambientEffect = (this.ambientTemp - 20.0) * 0.4;
       const coolingEffect = coolingFlow * 5.0;
 
       let temp = (latest ? latest.temperature_celsius : 22.5) + (powerHeat + ambientEffect - coolingEffect) * 0.4;
-      // Cap minimum at cooling air floor temperature (18.0 C)
       temp = Math.max(18.0, temp);
 
-      // Check threshold and update status
       if (temp >= 40.0) {
         rack.status = 'CRITICAL';
       } else if (temp >= 30.0) {

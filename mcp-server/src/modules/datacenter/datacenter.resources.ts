@@ -12,7 +12,7 @@ export class DatacenterResources {
   })
   async getTelemetryFeed(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Telemetry Feed');
-    this.state.tick();
+    await this.state.sync();
     
     const telemetryData = this.state.racks.map(rack => {
       const logs = this.state.telemetryLogs.filter(l => l.rack_id === rack.id);
@@ -40,6 +40,7 @@ export class DatacenterResources {
   })
   async getAssetRegistry(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Asset Registry');
+    await this.state.sync();
     const assetData = {
       facility_name: 'Amrita Digital Twin DC-1',
       location: 'Bangalore, IN',
@@ -74,6 +75,7 @@ export class DatacenterResources {
   })
   async getInfrastructureTopology(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Infrastructure Topology');
+    await this.state.sync();
     const topology = {
       dimensions: { rows: 3, columns: 2, height_u: 42 },
       nodes: this.state.racks.map(r => ({
@@ -106,6 +108,7 @@ export class DatacenterResources {
   })
   async getMaintenanceHistory(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Maintenance History');
+    await this.state.sync();
     const history = this.state.tickets.filter(t => t.status === 'RESOLVED');
     return {
       contents: [{
@@ -124,6 +127,7 @@ export class DatacenterResources {
   })
   async getIncidentHistory(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Incident History');
+    await this.state.sync();
     return {
       contents: [{
         uri,
@@ -141,6 +145,7 @@ export class DatacenterResources {
   })
   async getInventoryCatalog(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Inventory Catalog');
+    await this.state.sync();
     const catalog = Object.values(this.state.warehouseInventory);
     return {
       contents: [{
@@ -159,6 +164,7 @@ export class DatacenterResources {
   })
   async getSupplierDirectory(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Supplier Directory');
+    await this.state.sync();
     return {
       contents: [{
         uri,
@@ -176,6 +182,7 @@ export class DatacenterResources {
   })
   async getTechnicianRegistry(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Technician Registry');
+    await this.state.sync();
     return {
       contents: [{
         uri,
@@ -193,6 +200,7 @@ export class DatacenterResources {
   })
   async getWorkloadRegistry(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Workload Registry');
+    await this.state.sync();
     return {
       contents: [{
         uri,
@@ -210,6 +218,7 @@ export class DatacenterResources {
   })
   async getSlaPolicies(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: SLA Policies');
+    await this.state.sync();
     return {
       contents: [{
         uri,
@@ -227,6 +236,7 @@ export class DatacenterResources {
   })
   async getDecisionLog(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Decision Log');
+    await this.state.sync();
     return {
       contents: [{
         uri,
@@ -244,6 +254,7 @@ export class DatacenterResources {
   })
   async getSops(uri: string, ctx: ExecutionContext) {
     ctx.logger.info('Fetching resource: Standard Operating Procedures');
+    await this.state.sync();
     const sopsMarkdown = this.state.sops.map(sop => {
       return `## ${sop.title}\n\n${sop.content}\n\n---\n`;
     }).join('\n');
