@@ -115,6 +115,10 @@ class OrchestratorEngine:
             r1 = await client.async_call_tool("trigger_simulation_event", {"event_type": "HEATWAVE"})
             r2 = await client.async_call_tool("trigger_simulation_event", {"event_type": "COOLING_DEGRADATION"})
             
+            # Force a simulator tick to propagate degraded states to telemetry immediately
+            from app.features.simulator.engine import SimulatorEngine
+            SimulatorEngine().tick()
+            
             self.state.agent_logs.append(f"[Simulation] {r1.get('message')}")
             self.state.agent_logs.append(f"[Simulation] {r2.get('message')}")
             

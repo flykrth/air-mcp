@@ -14,10 +14,16 @@ class Settings(BaseSettings):
     
     # MCP Server Configuration
     # We run the Nitrostack MCP server via node/ts-node stdio
-    MCP_SERVER_DIR: str = os.getenv(
-        "MCP_SERVER_DIR",
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../mcp-server"))
-    )
+    # If the configured path is relative, resolve it relative to the project root
+    @property
+    def MCP_SERVER_DIR(self) -> str:
+        raw_path = os.getenv("MCP_SERVER_DIR", "")
+        if not raw_path:
+            return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../mcp-server"))
+        if not os.path.isabs(raw_path):
+            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+            return os.path.abspath(os.path.join(repo_root, raw_path))
+        return raw_path
     
     class Config:
         case_sensitive = True

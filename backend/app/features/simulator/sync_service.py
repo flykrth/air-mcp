@@ -154,13 +154,12 @@ class DatabaseSyncService:
 
     def on_simulator_tick(self, state: SimState):
         """Callback handler registered on the SimulatorEngine."""
-        # Check if there is an active event loop. If so, create a background task.
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
+            try:
+                loop = asyncio.get_running_loop()
                 loop.create_task(self.sync_state_to_db(state))
-            else:
-                # Run synchronously if no loop is running
+            except RuntimeError:
+                # No running event loop in this thread, run synchronously
                 asyncio.run(self.sync_state_to_db(state))
         except Exception as e:
             print(f"[SIMULATOR SYNC] Failed to schedule DB sync: {e}")
