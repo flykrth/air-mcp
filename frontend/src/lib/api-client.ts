@@ -1,6 +1,6 @@
 import { RunWorkflowResponse } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://air-mcp-production.up.railway.app/api/v1';
 
 export async function runWorkflow(): Promise<RunWorkflowResponse> {
   const res = await fetch(`${API_BASE}/orchestrator/run`, {

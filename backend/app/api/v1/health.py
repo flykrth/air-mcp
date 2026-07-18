@@ -71,35 +71,60 @@ async def health_check(response: Response):
             "error": str(e)
         }
 
-    # 4. MCP Server verification (Subprocess readiness)
-    mcp_path = os.path.join(settings.MCP_SERVER_DIR, "dist", "index.js")
-    mcp_compiled = os.path.exists(mcp_path)
-    
-    node_installed = False
-    node_version = None
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "node", "--version",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, _ = await proc.communicate()
-        if proc.returncode == 0:
-            node_installed = True
-            node_version = stdout.decode().strip()
-    except Exception:
-        pass
+    # 4. MCP Server verification (SSE Remote endpoint or Subprocess readiness)
+    if settings.MCP_SERVER_URL:
+        import httpx
+        is_mcp_healthy = False
+        status_code = None
+        error_msg = None
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                res = await client.get(settings.MCP_SERVER_URL)
+                if res.status_code in [200, 405]:
+                    is_mcp_healthy = True
+                status_code = res.status_code
+        except Exception as e:
+            error_msg = str(e)
 
-    details["mcp_server"] = {
-        "status": "healthy" if (mcp_compiled and node_installed) else "unhealthy",
-        "node_installed": node_installed,
-        "node_version": node_version,
-        "dist_compiled": mcp_compiled,
-        "mcp_server_dir": settings.MCP_SERVER_DIR
-    }
-    
-    if not (mcp_compiled and node_installed):
-        is_healthy = False
+        details["mcp_server"] = {
+            "status": "healthy" if is_mcp_healthy else "unhealthy",
+            "remote": True,
+            "url": settings.MCP_SERVER_URL,
+            "status_code": status_code,
+            "error": error_msg
+        }
+        if not is_mcp_healthy:
+            is_healthy = False
+    else:
+        mcp_path = os.path.join(settings.MCP_SERVER_DIR, "dist", "index.js")
+        mcp_compiled = os.path.exists(mcp_path)
+        
+        node_installed = False
+        node_version = None
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "node", "--version",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, _ = await proc.communicate()
+            if proc.returncode == 0:
+                node_installed = True
+                node_version = stdout.decode().strip()
+        except Exception:
+            pass
+
+        details["mcp_server"] = {
+            "status": "healthy" if (mcp_compiled and node_installed) else "unhealthy",
+            "remote": False,
+            "node_installed": node_installed,
+            "node_version": node_version,
+            "dist_compiled": mcp_compiled,
+            "mcp_server_dir": settings.MCP_SERVER_DIR
+        }
+        
+        if not (mcp_compiled and node_installed):
+            is_healthy = False
 
     # Return response based on overall health
     if not is_healthy:

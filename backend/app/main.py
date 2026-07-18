@@ -43,9 +43,14 @@ async def shutdown_event():
 
 
 # Set CORS origins
+allowed_origins = [settings.FRONTEND_URL]
+# Add local frontend port as fallback if we are not running production-only to prevent developer lock-out
+if "localhost" not in settings.FRONTEND_URL and "127.0.0" not in settings.FRONTEND_URL:
+    allowed_origins.append("http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For hackathon ease of connectivity
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://air-mcp-production.up.railway.app/api/v1';
   let backendReachable = false;
   let backendHealthDetails = null;
 

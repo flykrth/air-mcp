@@ -10,7 +10,14 @@ class Settings(BaseSettings):
     
     # Supabase Credentials (optional for backend, primarily used by MCP server)
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_ANON_KEY", os.getenv("SUPABASE_KEY", ""))
+    SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    
+    # MCP Server Configuration
+    MCP_SERVER_URL: str = os.getenv("MCP_SERVER_URL", "")
+    
+    # CORS Origin Configuration
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://air-mcp.vercel.app")
     
     # MCP Server Configuration
     # We run the Nitrostack MCP server via node/ts-node stdio

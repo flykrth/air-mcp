@@ -37,11 +37,34 @@ We define three logical deployment tiers:
 | :--- | :--- | :--- | :--- |
 | **Development** | Local testing, agent writing | Offline Fallback (In-memory) | Docker Compose on Localhost |
 | **Staging** | CI verification, pre-demo checks | Dedicated Staging Supabase DB | AWS ECS / Render / Fly.io |
-| **Production** | Live demonstration, production simulation | Dedicated Production Supabase DB | AWS ECS / EKS / GCP Cloud Run |
+| **Production** | Live demonstration, production simulation | Dedicated Production Supabase DB | Vercel (Frontend), Railway (Backend), NitroCloud (MCP) |
 
 ---
 
-## 3. Database Provisioning (Supabase Cloud Setup)
+## 3. Production Environment Variables Reference
+
+Configure the following variables in production to ensure secure communication:
+
+### A. Frontend (Vercel)
+* `NEXT_PUBLIC_API_URL`: The URL of the production API Gateway (e.g., `https://air-mcp-production.up.railway.app/api/v1`).
+
+### B. Backend (Railway)
+* `SUPABASE_URL`: The Supabase project URL (e.g., `https://xyz.supabase.co`).
+* `SUPABASE_ANON_KEY` / `SUPABASE_KEY`: The anonymous API key for database access.
+* `SUPABASE_SERVICE_ROLE_KEY`: The service role API key to permit database seeding and admin actions.
+* `MCP_SERVER_URL`: The public SSE URL of the hosted MCP server (e.g., `https://air-mcp-6a5b16a4-tatva-amrita-university-amritapuri-campus.app.nitrocloud.ai/sse`).
+* `FRONTEND_URL`: The production frontend URL (e.g., `https://air-mcp.vercel.app`) to restrict CORS access.
+
+### C. MCP Server (NitroCloud)
+* `BACKEND_URL`: The URL of the backend (e.g., `https://air-mcp-production.up.railway.app`) to sync digital twin state telemetry.
+* `PORT`: SSE listening port (typically `3000`).
+* `HOST`: Bind host (typically `0.0.0.0`).
+* `NODE_ENV`: Set to `production`.
+* `MCP_TRANSPORT_TYPE`: Set to `dual` or `http` for SSE.
+
+---
+
+## 4. Database Provisioning (Supabase Cloud Setup)
 
 The database layer requires PostgreSQL running on Supabase. Follow these steps:
 
@@ -69,7 +92,7 @@ The database layer requires PostgreSQL running on Supabase. Follow these steps:
 
 ---
 
-## 4. Container Compilation & Registry Pushing
+## 5. Container Compilation & Registry Pushing
 
 ### A. Backend Container (FastAPI + Embedded MCP)
 The backend container packages both the FastAPI python app and the Node.js TypeScript MCP server. The Node server is compiled during container build and run as a subprocess.
@@ -97,7 +120,7 @@ The Next.js frontend runs as a separate container. Build the container by passin
 
 ---
 
-## 5. CI/CD Pipeline (GitHub Actions)
+## 6. CI/CD Pipeline (GitHub Actions)
 
 We implement a complete CI/CD configuration inside [.github/workflows/ci-cd.yml](../../.github/workflows/ci-cd.yml) which executes on every push or pull request to the `main` branch.
 

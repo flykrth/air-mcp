@@ -509,73 +509,84 @@ class OrchestratorEngine:
         except Exception as e:
             self.log(f"ERROR: Failed to save workflow execution record: {e}")
 
+    async def _execute_workflow_steps(self, session: ClientSession) -> None:
+        import datetime
+        # Execute Steps
+        await self.run_step("HEATWAVE_TRIGGERED", session)
+        await asyncio.sleep(0.5)
+        
+        await self.run_step("THERMAL_ANALYSIS", session)
+        await asyncio.sleep(0.5)
+        
+        await self.run_step("RISK_ASSESSMENT", session)
+        await asyncio.sleep(0.5)
+        
+        # Concurrently execute Workload, Maintenance, and Supplier Agents
+        await self.run_parallel_phase(session)
+        await asyncio.sleep(0.5)
+        
+        await self.run_step("PROCUREMENT_AND_RECOVERY", session)
+        await asyncio.sleep(0.5)
+        
+        # Fetch executive incident summary prompt for audit trail
+        client = McpClientWrapper(session)
+        try:
+            await client.async_get_prompt("executive_incident_summary", {
+                "incident_id": self.state.workflow_id,
+                "downtime_minutes": "120",
+                "financial_impact_usd": str(self.state.risk_exposure_usd)
+            })
+        except Exception as pe:
+            self.log(f"WARNING: Failed to fetch executive summary prompt template: {pe}")
+
+        # Populate final recovery metrics
+        po_cost = 0.0
+        if self.state.order:
+            po_cost = self.state.order.get("total_cost", 0.0)
+        self.state.recovery_metrics = {
+            "risk_reduction_usd": self.state.risk_exposure_usd,
+            "actual_cost_usd": po_cost,
+            "downtime_saved_minutes": 120,
+            "resolution_status": "SUCCESS" if self.state.recovery_verified else "PARTIAL"
+        }
+        
+        self.state.end_time = datetime.datetime.now().isoformat()
+
     async def run_full_workflow(self) -> OrchestratorState:
         """
         Executes the entire workflow end-to-end concurrently.
-        Spawns the MCP Node server subprocess, completes all steps, and shuts it down.
+        Connects to the remote MCP SSE server if MCP_SERVER_URL is configured,
+        otherwise spawns the local Node subprocess via stdio.
         """
         import datetime
         import uuid
         
-        server_params = StdioServerParameters(
-            command="node",
-            args=["dist/index.js"],
-            cwd=settings.MCP_SERVER_DIR
-        )
+        # Reset state and initialize execution tracing metadata
+        self.state = OrchestratorState()
+        self.state.workflow_id = str(uuid.uuid4())
+        self.state.start_time = datetime.datetime.now().isoformat()
+        self.state.trigger = "COOLING_DEGRADATION"
 
-        self.log(f"Starting MCP Server subprocess at {settings.MCP_SERVER_DIR}...")
-        
-        async with stdio_client(server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                self.log("MCP Client session initialized. Standard tools registered.")
-
-                # Reset state and initialize execution tracing metadata
-                self.state = OrchestratorState()
-                self.state.workflow_id = str(uuid.uuid4())
-                self.state.start_time = datetime.datetime.now().isoformat()
-                self.state.trigger = "COOLING_DEGRADATION"
-                
-                # Execute Steps
-                await self.run_step("HEATWAVE_TRIGGERED", session)
-                await asyncio.sleep(0.5)
-                
-                await self.run_step("THERMAL_ANALYSIS", session)
-                await asyncio.sleep(0.5)
-                
-                await self.run_step("RISK_ASSESSMENT", session)
-                await asyncio.sleep(0.5)
-                
-                # Concurrently execute Workload, Maintenance, and Supplier Agents
-                await self.run_parallel_phase(session)
-                await asyncio.sleep(0.5)
-                
-                await self.run_step("PROCUREMENT_AND_RECOVERY", session)
-                await asyncio.sleep(0.5)
-                
-                # Fetch executive incident summary prompt for audit trail
-                client = McpClientWrapper(session)
-                try:
-                    await client.async_get_prompt("executive_incident_summary", {
-                        "incident_id": self.state.workflow_id,
-                        "downtime_minutes": "120",
-                        "financial_impact_usd": str(self.state.risk_exposure_usd)
-                    })
-                except Exception as pe:
-                    self.log(f"WARNING: Failed to fetch executive summary prompt template: {pe}")
-
-                # Populate final recovery metrics
-                po_cost = 0.0
-                if self.state.order:
-                    po_cost = self.state.order.get("total_cost", 0.0)
-                self.state.recovery_metrics = {
-                    "risk_reduction_usd": self.state.risk_exposure_usd,
-                    "actual_cost_usd": po_cost,
-                    "downtime_saved_minutes": 120,
-                    "resolution_status": "SUCCESS" if self.state.recovery_verified else "PARTIAL"
-                }
-                
-                self.state.end_time = datetime.datetime.now().isoformat()
+        if settings.MCP_SERVER_URL:
+            from mcp.client.sse import sse_client
+            self.log(f"Connecting to remote MCP Server via SSE at {settings.MCP_SERVER_URL}...")
+            async with sse_client(settings.MCP_SERVER_URL) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    self.log("Remote MCP Client session initialized over SSE.")
+                    await self._execute_workflow_steps(session)
+        else:
+            server_params = StdioServerParameters(
+                command="node",
+                args=["dist/index.js"],
+                cwd=settings.MCP_SERVER_DIR
+            )
+            self.log(f"Starting MCP Server subprocess at {settings.MCP_SERVER_DIR}...")
+            async with stdio_client(server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    self.log("MCP Client session initialized. Standard tools registered.")
+                    await self._execute_workflow_steps(session)
 
         # Save workflow execution record file
         self.save_workflow_record()
