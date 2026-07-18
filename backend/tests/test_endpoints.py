@@ -124,3 +124,15 @@ def test_orders_endpoints(client):
     response = client.get("/api/v1/orders/", headers=headers)
     assert response.status_code == 200
     assert len(response.json()) > 0
+
+def test_health_endpoint(client):
+    response = client.get("/api/v1/health")
+    # Health endpoint returns 200 (healthy) or 503 (degraded/unhealthy based on node/dist compiler checks)
+    assert response.status_code in [200, 503]
+    json_data = response.json()
+    assert "status" in json_data
+    assert "details" in json_data
+    assert "api" in json_data["details"]
+    assert "database" in json_data["details"]
+    assert "digital_twin" in json_data["details"]
+    assert "mcp_server" in json_data["details"]

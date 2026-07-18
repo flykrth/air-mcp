@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:8000';
+
 export interface Rack {
   id: string;
   name: string;
@@ -180,7 +182,7 @@ export class DatacenterState {
 
   async sync() {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/state');
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/state`);
       if (response.ok) {
         const data = (await response.json()) as any;
         
@@ -300,7 +302,7 @@ export class DatacenterState {
 
   async resetBackend() {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/reset', { method: 'POST' });
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/reset`, { method: 'POST' });
       if (response.ok) {
         await this.sync();
         return true;
@@ -312,7 +314,7 @@ export class DatacenterState {
 
   async tickBackend() {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/tick', { method: 'POST' });
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/tick`, { method: 'POST' });
       if (response.ok) {
         await this.sync();
         return true;
@@ -324,7 +326,7 @@ export class DatacenterState {
 
   async migrateWorkloadBackend(workloadId: string, targetRackId: string) {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/migrate', {
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/migrate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workload_id: workloadId, target_rack_id: targetRackId })
@@ -339,7 +341,7 @@ export class DatacenterState {
 
   async planMaintenanceBackend(targetRackId: string, issueType: string, description: string) {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/maintenance/plan', {
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/maintenance/plan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target_rack_id: targetRackId, issue_type: issueType, description })
@@ -355,7 +357,7 @@ export class DatacenterState {
 
   async scheduleTechnicianBackend(ticketId: string, technicianId: string, scheduledTime: string) {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/maintenance/schedule', {
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/maintenance/schedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticket_id: ticketId, technician_id: technicianId, scheduled_time: scheduledTime })
@@ -370,7 +372,7 @@ export class DatacenterState {
 
   async confirmMaintenanceRepairBackend(ticketId: string) {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/maintenance/confirm', {
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/maintenance/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticket_id: ticketId })
@@ -385,7 +387,7 @@ export class DatacenterState {
 
   async generateProcurementPlanBackend(ticketId: string, supplierId: string, parts: Record<string, number>) {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/procure', {
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/procure`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticket_id: ticketId, supplier_id: supplierId, parts })
@@ -401,7 +403,7 @@ export class DatacenterState {
 
   async triggerSimulationEventBackend(eventType: string) {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/simulator/incident', {
+      const response = await fetch(`${BACKEND_URL}/api/v1/simulator/incident`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_type: eventType })

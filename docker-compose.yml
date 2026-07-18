@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI Backend API Gateway
+  backend:
+    build:
+      context: ./
+      dockerfile: ./backend/Dockerfile
+    container_name: air-mcp-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_NAME=AIR-MCP Mission Orchestrator
+      - API_V1_STR=/api/v1
+      - PORT=8000
+      - HOST=0.0.0.0
+      - MCP_SERVER_DIR=/app/mcp-server
+      # Supabase credentials (if provided, otherwise runs in thread-safe offline fallback mode)
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_KEY=${SUPABASE_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # 2. Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    container_name: air-mcp-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # 3. Standalone MCP Server (HTTP/SSE Transport Mode)
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: ./Dockerfile
+    container_name: air-mcp-server-standalone
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - MCP_TRANSPORT_TYPE=dual
+      # Tell the MCP server where to sync the digital twin states
+      - BACKEND_API_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

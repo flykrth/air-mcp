@@ -14,8 +14,9 @@ class Settings(BaseSettings):
     
     # MCP Server Configuration
     # We run the Nitrostack MCP server via node/ts-node stdio
-    MCP_SERVER_DIR: str = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../../../mcp-server")
+    MCP_SERVER_DIR: str = os.getenv(
+        "MCP_SERVER_DIR",
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../mcp-server"))
     )
     
     class Config:
