@@ -10,7 +10,10 @@ class Settings(BaseSettings):
     
     # Supabase Credentials (optional for backend, primarily used by MCP server)
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-    SUPABASE_KEY: str = os.getenv("SUPABASE_ANON_KEY", os.getenv("SUPABASE_KEY", ""))
+    SUPABASE_KEY: str = os.getenv(
+        "SUPABASE_SERVICE_ROLE_KEY",
+        os.getenv("SUPABASE_ANON_KEY", os.getenv("SUPABASE_KEY", ""))
+    )
     SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
     
     # MCP Server Configuration

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import os
 import time
 import json
 import urllib.request
@@ -76,7 +77,7 @@ def main():
     print("        AIR-MCP API Gateway Performance Benchmark        ")
     print("=========================================================")
     
-    base_url = "http://localhost:8000"
+    base_url = os.getenv("BACKEND_URL", os.getenv("BACKEND_API_URL", "https://air-mcp-production.up.railway.app"))
     
     # First, check if backend is running
     try:

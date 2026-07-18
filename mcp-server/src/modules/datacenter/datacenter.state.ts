@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 
-const BACKEND_URL = process.env.BACKEND_URL || process.env.BACKEND_API_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_URL || process.env.BACKEND_API_URL || 'https://air-mcp-production.up.railway.app';
 
 export interface Rack {
   id: string;

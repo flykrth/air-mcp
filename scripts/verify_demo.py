@@ -61,6 +61,9 @@ def main():
     parser.add_argument("--run-workflow", action="store_true", help="Execute a mock resilience workflow run to verify agent execution")
     args = parser.parse_args()
 
+    backend_base = os.getenv("BACKEND_URL", os.getenv("BACKEND_API_URL", "https://air-mcp-production.up.railway.app"))
+    frontend_base = os.getenv("FRONTEND_URL", "https://air-mcp.vercel.app")
+
     print_header("AIR-MCP Pre-flight Presentation Verification")
     failed_critical = 0
     warnings = 0
@@ -96,7 +99,7 @@ def main():
     print(f"\n{CYAN}{BOLD}2. Validating Services status...{CLEAR}")
     
     # Check Backend Gateway
-    backend_url = "http://localhost:8000/api/v1/health"
+    backend_url = f"{backend_base.rstrip('/')}/api/v1/health"
     status_code, body = make_request(backend_url)
     
     if status_code == 0:
@@ -104,7 +107,7 @@ def main():
         failed_critical += 1
         # Stop checking since rest of backend API relies on this
         print(f"\n{RED}[!] Verification halted: Backend gateway is unreachable.{CLEAR}")
-        print(f"    Please run uvicorn startup (e.g. from backend directory: PYTHONPATH=. ./venv/bin/python app/main.py)")
+        print(f"    Please verify the public backend URL is reachable: {backend_url}")
         sys.exit(1)
     
     # Backend is running, process health response
@@ -155,12 +158,12 @@ def main():
 
     # 3. Check Frontend Accessibility
     print(f"\n{CYAN}{BOLD}3. Validating Frontend Access...{CLEAR}")
-    frontend_url = "http://localhost:3000"
+    frontend_url = frontend_base
     fe_status, fe_body = make_request(frontend_url)
     if fe_status == 200 or fe_status == 304:
-        print_check("Next.js Frontend Server", "OK", f"Responsive on port 3000")
+        print_check("Next.js Frontend Server", "OK", f"Responsive at {frontend_url}")
     else:
-        print_check("Next.js Frontend Server", "WARNING", f"Frontend is unreachable (Status: {fe_status}). Please run 'npm run dev' or 'npm run start' in /frontend directory.", warning=True)
+        print_check("Next.js Frontend Server", "WARNING", f"Frontend is unreachable (Status: {fe_status}) at {frontend_url}.", warning=True)
         warnings += 1
 
     # 4. Optional Workflow Execution Validation
@@ -168,7 +171,7 @@ def main():
         print(f"\n{CYAN}{BOLD}4. Executing Trial Resilience Workflow...{CLEAR}")
         print("    [Info] Triggering E2E recovery workflow. Please wait (typically ~8 seconds)...")
         t_start = time.time()
-        status_wf, body_wf = make_request("http://localhost:8000/api/v1/orchestrator/run", method="POST", timeout=30)
+        status_wf, body_wf = make_request(f"{backend_base.rstrip('/')}/api/v1/orchestrator/run", method="POST", timeout=30)
         duration = time.time() - t_start
         
         if status_wf == 200:

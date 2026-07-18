@@ -91,7 +91,7 @@ Triggering a workflow via POST `/api/v1/orchestrator/run` keeps loading, never c
 ### Resolution
 * **Simulator Reset**: Force a reset of the digital twin simulator state:
   ```bash
-  curl -X POST http://localhost:8000/api/v1/simulator/reset
+  curl -X POST https://air-mcp-production.up.railway.app/api/v1/simulator/reset
   ```
 * **Restart Backend**: Restart the container to clear thread locks:
   ```bash

@@ -2,7 +2,7 @@
 
 This document provides specifications for the REST endpoints exposed by the **AIR-MCP Backend Gateway**.
 
-*   **Host**: `http://localhost:8000` (development default)
+*   **Host**: `https://air-mcp-production.up.railway.app`
 *   **Base URL**: `/api/v1`
 *   **Content-Type**: `application/json`
 

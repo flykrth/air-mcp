@@ -59,11 +59,11 @@ All configuration is managed by the root `.env` file. Key environment variables 
 
 Once the startup script finishes successfully, verify the installation by checking:
 
-1.  **Dashboard**: Open [http://localhost:3000](http://localhost:3000) in your browser. You should see the system dashboard, active incident logs, and the status indicators set to "Online".
-2.  **Interactive API Docs**: Open [http://localhost:8000/docs](http://localhost:8000/docs) to view the Swagger interactive OpenAPI reference.
+1.  **Dashboard**: Open [https://air-mcp.vercel.app](https://air-mcp.vercel.app) in your browser. You should see the system dashboard, active incident logs, and the status indicators set to "Online".
+2.  **Interactive API Docs**: Open [https://air-mcp-production.up.railway.app/docs](https://air-mcp-production.up.railway.app/docs) to view the Swagger interactive OpenAPI reference.
 3.  **Backend Health Endpoint**: Probing the endpoint should return a successful JSON payload:
     ```bash
-    curl -i http://localhost:8000/api/v1/health
+    curl -i https://air-mcp-production.up.railway.app/api/v1/health
     ```
     Expected output:
     ```json

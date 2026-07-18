@@ -122,7 +122,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+            NEXT_PUBLIC_API_URL=https://air-mcp-production.up.railway.app/api/v1
 
       - name: Verify Standalone MCP Docker Build
         uses: docker/build-push-action@v5

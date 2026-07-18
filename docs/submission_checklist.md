@@ -44,7 +44,7 @@ This checklist outlines the criteria to verify the completeness, correctness, an
     ```
   - [ ] Confirm all steps print green `[✓]` status indicators.
 - [ ] **Dashboard Check**:
-  - [ ] Navigate to [http://localhost:3000](http://localhost:3000).
+  - [ ] Navigate to [https://air-mcp.vercel.app](https://air-mcp.vercel.app).
   - [ ] Verify telemetry graphs display live data points.
   - [ ] Click "Trigger Heatwave" and check that temperatures rise.
   - [ ] Run the orchestrator and check that workloads migrate from hot racks to cool racks.

@@ -82,7 +82,7 @@ For local offline development, you can leave the `SUPABASE_URL` and `SUPABASE_KE
    ```bash
    npm run dev
    ```
-   Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
+   Open your browser and navigate to [https://air-mcp.vercel.app](https://air-mcp.vercel.app) for the public deployment.
 
 ---
 

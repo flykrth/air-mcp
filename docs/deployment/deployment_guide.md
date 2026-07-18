@@ -35,7 +35,7 @@ We define three logical deployment tiers:
 
 | Tier | Purpose | Database Configuration | Host Environment |
 | :--- | :--- | :--- | :--- |
-| **Development** | Local testing, agent writing | Offline Fallback (In-memory) | Docker Compose on Localhost |
+| **Development** | Local testing, agent writing | Offline Fallback (In-memory) | Docker Compose on a local machine |
 | **Staging** | CI verification, pre-demo checks | Dedicated Staging Supabase DB | AWS ECS / Render / Fly.io |
 | **Production** | Live demonstration, production simulation | Dedicated Production Supabase DB | Vercel (Frontend), Railway (Backend), NitroCloud (MCP) |
 

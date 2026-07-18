@@ -40,7 +40,7 @@ To update configurations (e.g. updating database credentials or target URLs):
    ```
 3. **Verify Health**: Check the status endpoint:
    ```bash
-   curl -i http://localhost:8000/api/v1/health
+   curl -i https://air-mcp-production.up.railway.app/api/v1/health
    ```
 
 ---
@@ -95,5 +95,5 @@ If a newly deployed image crashes or fails health checks in staging/production:
    ```
 4. **Verify Rollback Success**: Confirm that the API status code returns `200 OK` on the health check endpoint:
    ```bash
-   curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/health
+   curl -s -o /dev/null -w "%{http_code}" https://air-mcp-production.up.railway.app/api/v1/health
    ```
