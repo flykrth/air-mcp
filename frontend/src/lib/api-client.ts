@@ -30,3 +30,20 @@ export async function resetWorkflowState(): Promise<any> {
   }
   return res.json();
 }
+
+export async function injectIncident(eventType: string, rackId?: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/simulator/incident`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_type: eventType, rack_id: rackId || null })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Failed to inject incident.');
+  }
+  return res.json();
+}
+
+export async function runOrchestrator(): Promise<RunWorkflowResponse> {
+  return runWorkflow();
+}

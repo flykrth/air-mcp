@@ -115,3 +115,61 @@ export interface RunWorkflowResponse {
   recovery_verified: boolean;
   recovery_message: string | null;
 }
+
+export interface HotspotRack {
+  rack_id: string;
+  name: string;
+  status: string;
+  row_id: number;
+  column_id: number;
+  temperature_celsius: number;
+  power_draw_kw: number;
+  cooling_flow_rate_lps: number;
+  ambient_temperature: number;
+  recorded_at: string;
+}
+
+export type JudgeModeStepId =
+  | 'overview'
+  | 'trigger'
+  | 'telemetry'
+  | 'agents'
+  | 'mcp'
+  | 'decision'
+  | 'recovery'
+  | 'audit';
+
+export interface JudgeModeStep {
+  id: JudgeModeStepId;
+  title: string;
+  subtitle: string;
+}
+
+export interface TelemetryChartPoint {
+  time: string;
+  ambient: number;
+  [key: string]: string | number;
+}
+
+export type OrchestratorStep =
+  | 'IDLE'
+  | 'HEATWAVE_TRIGGERED'
+  | 'COOLING_DEGRADATION'
+  | 'THERMAL_ANALYSIS'
+  | 'RISK_ASSESSMENT'
+  | 'WORKLOAD_MIGRATION'
+  | 'MAINTENANCE_PLANNING'
+  | 'SUPPLIER_EVALUATION'
+  | 'PROCUREMENT_AND_RECOVERY'
+  | 'COMPLETED';
+
+export interface AtRiskWorkload {
+  workload_id: string;
+  workload_name: string;
+  current_rack: string;
+  temperature: number;
+  threshold: number;
+  failure_probability: number;
+  potential_penalty_usd: number;
+  calculated_risk_cost_usd: number;
+}
