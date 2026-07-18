@@ -74,8 +74,8 @@ To force a clean slate in your Supabase cloud database:
    DROP TABLE IF EXISTS racks CASCADE;
    -- Rerun migrations after dropping
    ```
-2. Paste and run the schema code from [20260718000000_init_schema.sql](file:///home/flykrth/Downloads/air-mcp/supabase/migrations/20260718000000_init_schema.sql).
-3. Paste and run the seed records from [seed.sql](file:///home/flykrth/Downloads/air-mcp/supabase/seed.sql).
+2. Paste and run the schema code from [20260718000000_init_schema.sql](../supabase/migrations/20260718000000_init_schema.sql).
+3. Paste and run the seed records from [seed.sql](../supabase/seed.sql).
 
 ---
 

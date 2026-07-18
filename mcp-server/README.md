@@ -1,49 +1,48 @@
-# NitroStack Starter Template
+# AIR-MCP TypeScript Server
 
-Minimal template for learning NitroStack fundamentals with a calculator-focused
-MCP server and basic widgets.
+This directory contains the **TypeScript MCP Server** for the AIR-MCP platform, built using the Nitrostack modular framework. It exposes datacenter physics, inventory registers, and workload management APIs to autonomous agents via the Model Context Protocol.
 
-## What This Template Includes
+---
 
-- `calculator` module with tools, resources, and prompts
-- TypeScript + Zod validation setup
-- Widget-ready project structure
-- Production-friendly npm scripts
+## 📦 Features & Capabilities
 
-## Quick Start
+The server organizes its features into two core modules:
+1.  **`DatacenterModule` (Core)**: Exposes the primary cyber-physical tools:
+    *   **16 Tools**: For telemetry scans, failure prediction, SLA calculations, VM migrations, technician scheduling, and repair confirmations.
+    *   **12 Resources**: E.g., `datacenter://telemetry/feed`, `maintenance://technicians/registry`.
+    *   **10 Prompts**: Pre-structured templates to guide agent reasoning during incidents.
+2.  **`CalculatorModule` (Utility)**: Basic math operations and unit conversions.
 
+---
+
+## 🚀 Commands
+
+### Installation
 ```bash
-npx @nitrostack/cli init my-server --template typescript-starter
-cd my-server
+npm install
+```
+
+### Run in Development (StdIO with Watcher)
+```bash
 npm run dev
 ```
 
-## Common Commands
-
+### Build for Production
 ```bash
-npm run dev
 npm run build
+```
+
+### Start in Production (Supports STDIO + HTTP SSE Transports)
+```bash
 npm start
 ```
 
-## NitroStudio
+---
 
-NitroStudio is the recommended way to test and debug this template during
-development.
+## 🛠️ Testing with NitroStudio
 
-- Download: <https://nitrostack.ai/studio>
-- Studio: <https://nitrostack.ai/studio>
+We recommend using **NitroStudio** to manually test, run, and debug tools and resources:
+*   Download and open NitroStudio at: [https://nitrostack.ai/studio](https://nitrostack.ai/studio).
+*   Add a local server connection pointing to your server project.
 
-## Links
-
-- Docs: <https://docs.nitrostack.ai>
-- Templates docs: <https://docs.nitrostack.ai/templates/01-starter-template>
-- Main repository: <https://github.com/nitrocloudofficial/nitrostack>
-
-## Community
-
-- Discord: <https://discord.gg/uVWey6UhuD>
-- X: <https://x.com/nitrostackai>
-- YouTube: <https://www.youtube.com/@nitrostackai>
-- LinkedIn: <https://linkedin.com/company/nitrostack-ai/>
-- GitHub: <https://github.com/nitrostackai>
+For detailed schema structures and parameters of the exposed tools, consult the [MCP Guide](../docs/mcp/mcp_guide.md).

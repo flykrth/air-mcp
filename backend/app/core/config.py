@@ -24,8 +24,19 @@ class Settings(BaseSettings):
             repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
             return os.path.abspath(os.path.join(repo_root, raw_path))
         return raw_path
+
+    @property
+    def WORKFLOW_RECORD_DIR(self) -> str:
+        raw_path = os.getenv("WORKFLOW_RECORD_DIR", "")
+        if not raw_path:
+            return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../workflow_records"))
+        if not os.path.isabs(raw_path):
+            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+            return os.path.abspath(os.path.join(repo_root, raw_path))
+        return raw_path
     
     class Config:
         case_sensitive = True
 
 settings = Settings()
+

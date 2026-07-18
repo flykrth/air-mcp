@@ -73,7 +73,7 @@ for ((i=1; i<=MAX_RETRIES; i++)); do
         echo -e "${BLUE}Backend Docs (Swagger):${CLEAR} http://localhost:8000/docs"
         echo -e "${BLUE}Backend Health Check:${CLEAR} http://localhost:8000/api/v1/health"
         echo -e "${BLUE}Frontend Health Check:${CLEAR} http://localhost:3000/api/health"
-        echo -e "${BLUE}Standalone MCP Server (SSE):${CLEAR} http://localhost:3000"
+        echo -e "${BLUE}Standalone MCP Server (SSE):${CLEAR} http://localhost:3001"
         echo -e "${GREEN}-------------------------------------------------------------------${CLEAR}"
         echo -e "${GREEN}Enjoy the demo! Run ./scripts/down.sh to tear down the services.${CLEAR}"
         exit 0

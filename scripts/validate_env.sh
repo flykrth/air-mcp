@@ -66,7 +66,8 @@ check_port() {
 }
 
 echo -e "\nChecking local port availability..."
-check_port 3000 "Frontend / Standalone MCP" || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+check_port 3000 "Next.js Frontend" || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+check_port 3001 "Standalone MCP Server (SSE)" || FAILED_CHECKS=$((FAILED_CHECKS + 1))
 check_port 8000 "FastAPI Backend Gateway" || FAILED_CHECKS=$((FAILED_CHECKS + 1))
 
 # 5. Check if offline fallback or Supabase credentials are configured

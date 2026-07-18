@@ -499,7 +499,7 @@ class OrchestratorEngine:
         import json
         import os
         record_id = self.state.workflow_id
-        record_dir = "/home/flykrth/.gemini/antigravity/brain/30b022c1-854c-4457-b2e2-8d2d284551e2"
+        record_dir = settings.WORKFLOW_RECORD_DIR
         os.makedirs(record_dir, exist_ok=True)
         file_path = os.path.join(record_dir, f"workflow_record_{record_id}.json")
         try:
